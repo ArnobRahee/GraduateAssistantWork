@@ -1,11 +1,12 @@
 import os
 import pandas as pd
+import yt_dlp
 from pytube import YouTube
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled
 from pytube.exceptions import VideoUnavailable
 
-def get_video_title(video_id):
+def get_video_title_pytube(video_id):
     try:
         yt = YouTube(f'https://www.youtube.com/watch?v={video_id}')
         return yt.title
@@ -13,7 +14,24 @@ def get_video_title(video_id):
         print(f"Video with ID {video_id} is unavailable.")
         return None
     except Exception as e:
-        print(f"An error occurred while fetching the title for video ID {video_id}: {e}")
+        print(f"An error occurred while fetching the title for video ID {video_id} using pytube: {e}")
+        return None
+
+def get_video_title_ytdlp(video_id):
+    try:
+        video_url = f'https://www.youtube.com/watch?v={video_id}'
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'format': 'best',
+            'skip_download': True,
+            'force_generic_extractor': True
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(video_url, download=False)
+            return info_dict.get('title', None)
+    except Exception as e:
+        print(f"An error occurred while fetching the title for video ID {video_id} using yt-dlp: {e}")
         return None
 
 def get_video_transcript(video_id):
@@ -50,15 +68,15 @@ if __name__ == "__main__":
     for index, row in df.iterrows():
         video_id = row['videoid']  # Updated to use the correct column name
         
-        # Get video title
-        video_title = get_video_title(video_id)
+        # Try to get video title using pytube first
+        video_title = get_video_title_pytube(video_id)
         
-        if video_title:
-            # Sanitize the title for use as a filename
-            sanitized_title = "".join(x for x in video_title if (x.isalnum() or x in "._- ")).replace(" ", "_")
-        else:
-            # Use video ID as the filename if title couldn't be fetched
-            sanitized_title = video_id
+        # If pytube fails, try yt-dlp
+        if not video_title:
+            video_title = get_video_title_ytdlp(video_id)
+        
+        # Use video ID as the filename if title couldn't be fetched
+        sanitized_title = video_id if not video_title else "".join(x for x in video_title if (x.isalnum() or x in "._- ")).replace(" ", "_")
         
         # Get transcript
         transcript = get_video_transcript(video_id)
