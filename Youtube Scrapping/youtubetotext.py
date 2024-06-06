@@ -4,14 +4,13 @@ import yt_dlp
 from pytube import YouTube
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled
-from pytube.exceptions import VideoUnavailable
+from pytube.exceptions import VideoUnavailable, RegexMatchError
 
 def get_video_title_pytube(video_id):
     try:
         yt = YouTube(f'https://www.youtube.com/watch?v={video_id}')
         return yt.title
-    except VideoUnavailable:
-        print(f"Video with ID {video_id} is unavailable.")
+    except (VideoUnavailable, RegexMatchError):
         return None
     except Exception as e:
         print(f"An error occurred while fetching the title for video ID {video_id} using pytube: {e}")
@@ -40,10 +39,9 @@ def get_video_transcript(video_id):
         return transcript
     except TranscriptsDisabled:
         print(f"Transcripts are disabled for video ID: {video_id}")
-        return None
     except Exception as e:
-        print(f"An error occurred: {e}")
-        return None
+        print(f"An error occurred while fetching transcript for video ID {video_id}: {e}")
+    return None
 
 def save_transcript(transcript, file_path):
     with open(file_path, 'w', encoding='utf-8') as file:
@@ -55,7 +53,7 @@ def save_transcript(transcript, file_path):
 
 if __name__ == "__main__":
     excel_path = 'archive.xlsx'  # Path to the provided Excel file
-    output_folder = "Moms 4 Liberty"
+    output_folder = "Moms_4_Liberty"
 
     # Create output folder if it doesn't exist
     if not os.path.exists(output_folder):
@@ -66,7 +64,7 @@ if __name__ == "__main__":
 
     # Process each video ID
     for index, row in df.iterrows():
-        video_id = row['videoid']  # Updated to use the correct column name
+        video_id = row['videoid']  # Ensure this matches the correct column name
         
         # Try to get video title using pytube first
         video_title = get_video_title_pytube(video_id)
@@ -76,7 +74,10 @@ if __name__ == "__main__":
             video_title = get_video_title_ytdlp(video_id)
         
         # Use video ID as the filename if title couldn't be fetched
-        sanitized_title = video_id if not video_title else "".join(x for x in video_title if (x.isalnum() or x in "._- ")).replace(" ", "_")
+        if not video_title:
+            sanitized_title = video_id
+        else:
+            sanitized_title = "".join(x for x in video_title if (x.isalnum() or x in "._- ")).replace(" ", "_")
         
         # Get transcript
         transcript = get_video_transcript(video_id)
