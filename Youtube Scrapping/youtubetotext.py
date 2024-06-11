@@ -73,17 +73,11 @@ if __name__ == "__main__":
         if not video_title:
             video_title = get_video_title_ytdlp(video_id)
         
-        # Use video ID as the filename if title couldn't be fetched
-        if not video_title:
-            sanitized_title = video_id
-        else:
-            sanitized_title = "".join(x for x in video_title if (x.isalnum() or x in "._- ")).replace(" ", "_")
-        
         # Get transcript
         transcript = get_video_transcript(video_id)
 
         if transcript:
-            file_name = os.path.join(output_folder, f"{sanitized_title}_transcript.txt")
+            file_name = os.path.join(output_folder, f"{video_id}_transcript.txt")
             save_transcript(transcript, file_name)
             print(f"Transcript saved to {file_name}")
         else:
